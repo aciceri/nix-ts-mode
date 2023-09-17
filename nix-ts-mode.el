@@ -46,6 +46,8 @@
   :prefix "nix-ts-"
   :group 'languages)
 
+;; 2 spaces of indentation are reccommended by the nixpkgs manual:
+;; https://nixos.org/manual/nixpkgs/stable/#sec-syntax
 (defcustom nix-ts-mode-indent-offset 2
   "Number of spaces for each indentation step in `nix-ts-mode'."
   :type 'integer
