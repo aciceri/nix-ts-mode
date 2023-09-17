@@ -250,12 +250,31 @@ Return nil if there is no name or if NODE is not a defun node."
 	'nix
       language-in-range)))
 
+(defun nix-ts-mode--electric-pair-multiline-string-delimiter ()
+  "Closes a string delimited by ''s and correctly place the cursor.
+It doesn't work if `treesit-language-at-point-function' is not \"nix\"."
+  (when (and electric-pair-mode
+             (string= (nix-ts-mode--treesit-language-at-point (point)) "nix")
+             (eq last-command-event ?\')
+             (eq (char-before (- (point) 1)) ?\'))
+   (let ((current-indentation (current-indentation)))
+      (newline)
+      (insert (make-string (+ current-indentation nix-ts-mode-indent-offset) ?\ ))
+      (save-excursion
+        (newline)
+        (insert (make-string current-indentation ?\ ))
+        (insert (make-string 2 ?\'))))))
+
 ;;;###autoload
 (define-derived-mode nix-ts-mode prog-mode "Nix"
   "Major mode for editing Nix expressions, powered by treesitter.
 
 \\{nix-ts-mode-map}"
   :syntax-table nix-ts-mode--syntax-table
+
+  ;; Electric pair
+  (add-hook 'post-self-insert-hook
+	    #'nix-ts-mode--electric-pair-multiline-string-delimiter 'append t)
 
   (when (treesit-ready-p 'nix)
     (treesit-parser-create 'nix)
