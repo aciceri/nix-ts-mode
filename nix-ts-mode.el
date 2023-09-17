@@ -175,13 +175,15 @@
      ((node-is "''") parent-bol 0)
      ((node-is "binding_set") parent-bol nix-ts-mode-indent-offset)
      ((node-is "indented_string_expression") parent-bol nix-ts-mode-indent-offset)
-     ((parent-is "formals") parent-bol 0)
+     ((parent-is "formals") parent-bol nix-ts-mode-indent-offset)
      ((parent-is "binding_set") parent-bol 0)
      ((parent-is "binding") parent-bol nix-ts-mode-indent-offset)
      ((parent-is "list_expression") parent-bol nix-ts-mode-indent-offset)
      ((parent-is "apply_expression") parent-bol nix-ts-mode-indent-offset)
      ((parent-is "parenthesized_expression") parent-bol nix-ts-mode-indent-offset)
-     (no-node parent-bol nix-ts-mode-indent-offset))) ; Automatically indent as soon as a new (empty) line is created
+     ((node-is "in") parent-bol 0)
+     (no-node parent-bol nix-ts-mode-indent-offset) ; Automatically indent as soon as a new (empty) line is created
+     ))
   "Tree-sitter indent rules for `nix-ts-mode'.")
 
 ;; Keymap
