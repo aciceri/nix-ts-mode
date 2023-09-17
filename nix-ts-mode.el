@@ -38,6 +38,9 @@
 (declare-function treesit-parser-create "treesit.c")
 (declare-function treesit-node-child-by-field-name "treesit.c")
 (declare-function treesit-node-type "treesit.c")
+(declare-function treesit-parser-list "treesit.c")
+(declare-function treesit-parser-included-ranges "treesit.c")
+(declare-function treesit-parser-language "treesit.c")
 
 ;; Other
 
@@ -52,6 +55,11 @@
   "Number of spaces for each indentation step in `nix-ts-mode'."
   :type 'integer
   :safe 'integerp)
+
+(defcustom nix-ts-mode--embed-bash t
+  "Embed `bash-ts-mode' in multiline strings delimited by \"."
+  :type 'boolean
+  :safe 'booleanp)
 
 (defvar nix-ts--treesit-builtins
   ;; nix eval --impure --expr 'with builtins; filter (x: !(elem x [ "abort" "derivation" "import" "throw" ]) && isFunction builtins.${x}) (attrNames builtins)'
@@ -167,6 +175,19 @@
    '((ERROR) @font-lock-warning-face))
   "Tree-sitter font-lock settings for `nix-ts-mode'.")
 
+(when nix-ts-mode--embed-bash
+  (require 'sh-script)
+  (defvar sh-mode--treesit-settings)
+  (setq nix-ts-mode--font-lock-settings
+        (append nix-ts-mode--font-lock-settings
+                (mapcar #'(lambda (rule)
+                            `(,(car rule) ;; query
+                              t
+                              ,(nth 2 rule) ;; feature keyword
+                              t ;; always override
+                              ))
+                        sh-mode--treesit-settings))))
+
 ;; Indentation
 (defvar nix-ts-mode-indent-rules
   `((nix
@@ -212,6 +233,23 @@ Return nil if there is no name or if NODE is not a defun node."
      (treesit-node-text
       (treesit-node-child-by-field-name node "attrpath") t))))
 
+(defun nix-ts-mode--treesit-language-at-point (point)
+  "Return the language at POINT as string."
+  (let* ((range nil)
+         (language-in-range
+          (cl-loop
+           for parser in (treesit-parser-list)
+           do (setq range
+                    (cl-loop
+                     for range in (treesit-parser-included-ranges parser)
+                     if (and (>= point (car range)) (<= point (cdr range)))
+                     return parser))
+           if range
+           return (treesit-parser-language parser))))
+    (if (null language-in-range)
+	'nix
+      language-in-range)))
+
 ;;;###autoload
 (define-derived-mode nix-ts-mode prog-mode "Nix"
   "Major mode for editing Nix expressions, powered by treesitter.
@@ -221,6 +259,16 @@ Return nil if there is no name or if NODE is not a defun node."
 
   (when (treesit-ready-p 'nix)
     (treesit-parser-create 'nix)
+
+    ;; Bash embedding
+    (when nix-ts-mode--embed-bash
+      (setq-local treesit-range-settings
+                  (treesit-range-rules
+                   :embed 'bash
+                   :host 'nix
+                   '((indented_string_expression (string_fragment) @capture))))
+
+      (setq-local treesit-language-at-point-function #'nix-ts-mode--treesit-language-at-point))
 
     ;; Font locking
     (setq-local treesit-font-lock-settings nix-ts-mode--font-lock-settings)
